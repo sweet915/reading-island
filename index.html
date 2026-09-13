@@ -431,7 +431,7 @@ button,[onclick]{touch-action:manipulation}
   </div>
 
   <div class="hero-band">
-    <span class="float-badge" style="left:16px;top:14px">童话</span>
+    <span class="float-badge" style="right:150px;top:96px;animation-delay:.4s">童话</span>
     <span class="float-badge" style="right:170px;top:18px;background:var(--coral);animation-delay:.8s">寓言</span>
     <span class="float-badge" style="right:40px;top:64px;background:var(--sky);animation-delay:1.6s">科普</span>
     <h1>阅读冒险岛</h1>
@@ -534,6 +534,7 @@ button,[onclick]{touch-action:manipulation}
       <div class="xpbar"><i id="res-xpbar" style="width:0%"></i></div>
     </div>
     <div class="home-actions">
+      <button class="btn coral" id="btn-nextbook" onclick="goNextBook()">📖 下一篇</button>
       <button class="btn sage" onclick="goMap()">回地图 →</button>
       <button class="btn ghost" onclick="replayLevel()">再读一次</button>
     </div>
@@ -1100,29 +1101,38 @@ function finishReading(){
   else if(lv.reorder&&lv.reorder.length>0)startReorder();
   else showResult();
 }
+function shuffledIdx(n){ // Fisher-Yates 洗牌，返回 0..n-1 的随机排列
+  const a=[...Array(n).keys()];
+  for(let i=n-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
 function renderQuiz(){
   const q=CH.lv.quiz[CH.qi];
+  // 每次呈现都打乱选项顺序，避免答案固定在某个位置
+  const order=shuffledIdx(q.opts.length);
+  CH.ansAt=order.indexOf(q.a);
   document.getElementById('ch-stage').textContent='读后挑战 · 阅读理解';
   document.getElementById('ch-title').textContent='第 '+(CH.qi+1)+' 题，想一想再回答';
   document.getElementById('ch-body').innerHTML=
     `<div class="quiz-q">${q.q}</div>
-     <div class="quiz-opts">${q.opts.map((o,j)=>
-       `<button class="quiz-opt" onclick="answerQuiz(${j})"><span class="abc">${'ABCD'[j]}</span><span>${o}</span></button>`).join('')}</div>
+     <div class="quiz-opts">${order.map((oj,j)=>
+       `<button class="quiz-opt" onclick="answerQuiz(${j})"><span class="abc">${'ABCD'[j]}</span><span>${q.opts[oj]}</span></button>`).join('')}</div>
      <div class="quiz-explain" id="quiz-exp"></div>`;
   document.getElementById('ch-foot').innerHTML=
     `<span class="quiz-progress">${CH.qi+1} / ${CH.total}</span><span></span>`;
 }
 function answerQuiz(j){
   const q=CH.lv.quiz[CH.qi];
+  const a=CH.ansAt; // 打乱后正确答案的位置
   const opts=document.querySelectorAll('.quiz-opt');
   if(document.getElementById('ch-foot').dataset.locked)return;
   document.getElementById('ch-foot').dataset.locked='1';
-  const ok=j===q.a;
+  const ok=j===a;
   if(ok)CH.right++;
-  opts.forEach((el,k)=>{if(k===q.a)el.classList.add('right');else if(k===j)el.classList.add('wrong');el.style.pointerEvents='none';});
+  opts.forEach((el,k)=>{if(k===a)el.classList.add('right');else if(k===j)el.classList.add('wrong');el.style.pointerEvents='none';});
   const exp=document.getElementById('quiz-exp');
   exp.style.display='block';
-  exp.innerHTML=(ok?'✅ 答对啦！':'💡 正确答案是 '+('ABCD'[q.a])+'。')+q.exp;
+  exp.innerHTML=(ok?'✅ 答对啦！':'💡 正确答案是 '+('ABCD'[a])+'。')+q.exp;
   const last=CH.qi===CH.total-1;
   const hasReorder=CH.lv.reorder&&CH.lv.reorder.length>0;
   document.getElementById('ch-foot').innerHTML=
@@ -1273,10 +1283,28 @@ function showResult(){
   const base=li.cur.xp,top=li.next?li.next.xp:SAVE.xp;
   const pct=li.next?Math.min(100,(SAVE.xp-base)/(top-base)*100):100;
   show('result');
+  const nb=document.getElementById('btn-nextbook'),ni=nextBookIdx();
+  if(ni>=0){nb.style.display='';nb.textContent='📖 下一篇：《'+BOOKS[ni].name+'》';nb.title=BOOKS[ni].name;}
+  else nb.style.display='none';
   requestAnimationFrame(()=>{document.getElementById('res-xpbar').style.width=pct+'%';});
   confetti();
 }
 function replayLevel(){startLevel(CUR.idx);}
+/* 找“下一篇”：先找同星级的下一本；本星级读完则引导到下一星级第一本（此时已解锁） */
+function nextBookIdx(){
+  if(!CUR)return -1;
+  const i=CUR.idx,t=CUR.lv.tier;
+  for(let k=i+1;k<BOOKS.length;k++)if(BOOKS[k].tier===t)return k;
+  if(t<5){
+    const total=BOOKS.filter(b=>b.tier===t).length;
+    if(doneInTier(t)>=total){
+      const ni=BOOKS.findIndex(b=>b.tier===t+1);
+      if(ni>=0)return ni;
+    }
+  }
+  return -1;
+}
+function goNextBook(){const i=nextBookIdx();if(i>=0)startLevel(i);else goMap();}
 /* 彩带庆祝（WAAPI，无外链） */
 function confetti(){
   const colors=['#F28482','#84A59D','#FFCE80','#F5CAC3','#A1D9F7'];
