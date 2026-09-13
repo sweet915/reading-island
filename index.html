@@ -866,11 +866,85 @@ function markWords(text){
 
 /* ---------- 拼音开关 ---------- */
 const ZH_RE=/[\u3400-\u4dbf\u4e00-\u9fff]/;
+/* 多音字修正表：基于全部 150 篇书库逐一审计。pinyin-pro 词库对部分词注音不准，
+   这里用词级修正（长词优先，命中后该位置受保护），再对残余的“地/得”按结构助词兜底为轻声。 */
+const PY_FIX={
+/* 得 dé / děi / de 相关（长键优先） */
+'舍不得':'shě bu de','恨不得':'hèn bu de','不得不':'bù dé bù','不得了':'bù dé liǎo',
+'得过一次':'děi guò yí cì','案得年年':'àn děi nián nián','还得靠':'hái děi kào',
+'还得过':'hái dé guò','们得去':'men děi qù','也得压':'yě děi yā','饭也得':'fàn yě děi',
+'话得从':'huà děi cóng','得日夜':'děi rì yè','就得':'jiù děi','，得先':'děi xiān','先得':'xiān děi',
+/* V+得到/得出 表“能够”时为轻声 de，以下长键优先于“得到” */
+'办得到':'bàn de dào','捡得到':'jiǎn de dào','传得到':'chuán de dào','吹得到':'chuī de dào',
+'收得到':'shōu de dào','测得出':'cè de chū','写得出':'xiě de chū','得出结':'dé chū jié',
+'值得':'zhí dé','获得':'huò dé','得到':'dé dào','得知':'dé zhī',
+'夺得':'duó dé','赢得':'yíng dé','得意':'dé yì','得罪':'dé zuì','得救':'dé jiù',
+'各得其':'gè dé qí','拔得头':'bá dé tóu','不得':'bù dé','难得':'nán dé','心得':'xīn dé',
+'只得了':'zhǐ dé le','以得了':'yǐ dé le','报得三':'bào dé sān','得第二':'dé dì èr',
+/* 数 shǔ 动词 */
+'数着数着':'shǔ zhe shǔ zhe','数也数':'shǔ yě shǔ','数一数':'shǔ yī shǔ',
+'数了数':'shǔ le shǔ','数不清':'shǔ bù qīng','数绵羊':'shǔ mián yáng','数星星':'shǔ xīng xing',
+'数不完':'shǔ bù wán','在数那':'zài shǔ nà','躺下数':'tǎng xià shǔ','埂上数':'gěng shàng shǔ',
+'要数':'yào shǔ','数腿':'shǔ tuǐ','数数':'shǔ shǔ','数一':'shǔ yī',
+/* 地 dì 名词（默认兜底为轻声 de，以下名词受保护） */
+'天差地别':'tiān chā dì bié','惊天动地':'jīng tiān dòng dì','五体投地':'wǔ tǐ tóu dì',
+'天和地':'tiān hé dì','没有地':'méi yǒu dì','目的地':'mù dì dì','地动仪':'dì dòng yí',
+'地下去':'de xià qù','下地，':'xià dì','地球':'dì qiú','地方':'dì fang','地震':'dì zhèn',
+'地面':'dì miàn','土地':'tǔ dì','大地':'dà dì','天地就':'tiān dì jiù','天地之':'tiān dì zhī',
+'给天地':'gěi tiān dì','返天地':'fǎn tiān dì','当地':'dāng dì',
+'地上':'dì shang','地下':'dì xià','地洞':'dì dòng','地毯':'dì tǎn','地图':'dì tú',
+'地壳':'dì qiào','的地热':'de dì rè','是地热':'shì dì rè','地表':'dì biǎo','地质':'dì zhì','地理':'dì lǐ',
+'地势':'dì shì','地貌':'dì mào','地形':'dì xíng','地址':'dì zhǐ','的地盘':'de dì pán','抢地盘':'qiǎng dì pán',
+'地位':'dì wèi','地板':'dì bǎn','地平':'dì píng','地带':'dì dài','地区':'dì qū',
+'个地缝':'gè dì fèng','钻地缝':'zuān dì fèng','地里':'dì lǐ','地头':'dì tóu','地主':'dì zhǔ','地磁':'dì cí',
+'陆地':'lù dì','极地':'jí dì','平地':'píng dì','工地':'gōng dì',
+'营地':'yíng dì','基地':'jī dì','各地':'gè dì','田地':'tián dì','草地':'cǎo dì',
+'雪地':'xuě dì','进沙地':'jìn shā dì','种地':'zhòng dì','扫地':'sǎo dì','锄地':'chú dì',
+'地瓜':'dì guā','块空地':'kuài kòng dì','落地':'luò dì','就地':'jiù dì','踏地':'tà dì',
+'观赏地':'guān shǎng dì','原地':'yuán dì','离地':'lí dì','随地':'suí dì','伏地':'fú dì',
+'辟地':'pì dì','立地':'lì dì','掷地':'zhì dì',
+/* 着 */
+'先着地':'xiān zhuó dì','踩着地':'cǎi zhe dì','闭着眼':'bì zhe yǎn','红着眼':'hóng zhe yǎn',
+'眯着眼':'mī zhe yǎn','眨着眼':'zhǎ zhe yǎn','睁着眼':'zhēng zhe yǎn','朝着':'cháo zhe',
+/* 其余多音词 */
+'发现':'fā xiàn','商量':'shāng liang','用处':'yòng chù','待在':'dāi zài','待上':'dāi shàng',
+'待不住':'dāi bú zhù','心脏':'xīn zàng','冠军':'guàn jūn','连冠':'lián guàn',
+'粘住':'zhān zhù','粘得':'zhān de','粘锅':'zhān guō','半宿':'bàn xiǔ','燕王':'yān wáng',
+'涨红':'zhàng hóng','边塞':'biān sài','出塞':'chū sài','关塞':'guān sài','屏住':'bǐng zhù',
+'当铺':'dàng pù','转向':'zhuǎn xiàng','钻出':'zuān chū','钻到':'zuān dào','新长':'xīn zhǎng',
+'长大':'zhǎng dà','长高':'zhǎng gāo','长成':'zhǎng chéng','长得':'zhǎng de',
+'长出':'zhǎng chū','长个':'zhǎng gè','跟着长':'gēn zhe zhǎng','才长':'cái zhǎng',
+'传来':'chuán lái','传入':'chuán rù','教给':'jiāo gěi','教我':'jiāo wǒ','教你':'jiāo nǐ',
+'教他':'jiāo tā','教大家':'jiāo dà jiā','载人':'zài rén','载着':'zài zhe',
+'曲项':'qū xiàng','请帖':'qǐng tiě','斗篷':'dǒu peng','大城':'dà chéng'
+};
+const PY_KEYS=Object.keys(PY_FIX).sort((a,b)=>b.length-a.length);
+function fixPinyin(t,arr){
+  const fixed=new Array(t.length).fill(false);
+  for(const key of PY_KEYS){
+    let i=0;
+    while((i=t.indexOf(key,i))>=0){
+      const syls=PY_FIX[key].split(' ');
+      let si=0;
+      for(let j=0;j<key.length;j++){
+        if(ZH_RE.test(key[j])){if(!fixed[i+j])arr[i+j]=syls[si];si++;}
+        fixed[i+j]=true;
+      }
+      i+=key.length;
+    }
+  }
+  // 兜底：剩余的“地/得”按结构助词读轻声
+  for(let i=0;i<t.length;i++){
+    if(fixed[i])continue;
+    if(t[i]==='地'||t[i]==='得')arr[i]='de';
+  }
+  return arr;
+}
 function safePinyin(t){
   // 整段转换（保留多音字上下文），数组与字符 1:1 对齐；长度不符时逐字兜底
   try{
     const arr=pinyinPro.pinyin(t,{toneType:'symbol',type:'array'});
-    if(arr.length===t.length)return arr;
+    if(arr.length===t.length)return fixPinyin(t,arr);
   }catch(e){}
   return t.split('').map(ch=>ZH_RE.test(ch)?pinyinPro.pinyin(ch,{toneType:'symbol'}):'');
 }
@@ -946,11 +1020,27 @@ function stopSpeak(){
   try{speechSynthesis.cancel();}catch(e){}
   updateSpeakBtn();
 }
+/* 朗读谐音修正：仅作用于传给语音引擎的文本，不影响屏幕显示。
+   语音引擎对部分多音字也会读错，这里换成同音字让它读准（děi 无同音常用字，得先/就得等交由引擎语法判断）。 */
+const TTS_FIX={
+'数着数着':'鼠着鼠着','数也数':'鼠也鼠','数一数':'鼠一鼠','数了数':'鼠了鼠','数不清':'鼠不清',
+'数绵羊':'鼠绵羊','数星星':'鼠星星','数不完':'鼠不完','在数那':'在鼠那','躺下数':'躺下鼠',
+'埂上数':'埂上鼠','要数':'要鼠','数腿':'鼠腿','数数':'鼠鼠','数一':'鼠一',
+'粘住':'沾住','粘得':'沾得','粘锅':'沾锅','半宿':'半朽','燕王':'淹王','请帖':'请铁',
+'曲项':'驱项','屏住':'饼住','涨红':'胀红','载着':'在着','载人':'在人',
+'待在':'呆在','待上':'呆上','待不住':'呆不住','教给':'交给','教我':'交我','教你':'交你',
+'教他':'交他','教大家':'交大家'
+};
+const TTS_KEYS=Object.keys(TTS_FIX).sort((a,b)=>b.length-a.length);
+function ttsText(s){
+  TTS_KEYS.forEach(k=>{s=s.split(k).join(TTS_FIX[k]);});
+  return s;
+}
 function speakCurrent(gen){
   if(!speaking||gen!==speakGen||!CUR)return;
   const st=CUR.flow[CUR.pos];
   if(!st||st.type!=='page')return;
-  const text=st.text.replace(/\{\{|\}\}/g,'');
+  const text=ttsText(st.text.replace(/\{\{|\}\}/g,''));
   if(!text.trim())return;
   try{speechSynthesis.cancel();}catch(e){}
   const u=new SpeechSynthesisUtterance(text);
@@ -1038,7 +1128,7 @@ function prevPage(){
 function nextPage(){
   const st=CUR.flow[CUR.pos];
   if(st.type!=='page')return;
-  CUR.chars+=st.text.replace(/\{\{|\}\}/g,'').length;
+  // 字数不再随翻页累计：读完一篇才按整篇统计（见 finishReading）
   if(CUR.pos<CUR.flow.length-1){
     CUR.pos++;
     while(CUR.pos<CUR.flow.length-1&&CUR.flow[CUR.pos].type==='choice'&&CUR.flow[CUR.pos].done)CUR.pos++;
@@ -1091,6 +1181,8 @@ function collectWord(w,sp){
 function finishReading(){
   stopSpeak();
   stopTick();
+  // 整篇读完后一次性计入全文字数（含标点，去除旧标记与换行）
+  CUR.chars=CUR.lv.text.replace(/\{\{|\}\}/g,'').replace(/\s/g,'').length;
   const r=dayRec(todayStr());
   r.chars+=CUR.chars;SAVE.charsRead+=CUR.chars;save();
   const lv=CUR.lv;
