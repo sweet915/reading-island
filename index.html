@@ -371,6 +371,20 @@ textarea.diary:focus{border-color:var(--salmon)}
 .word-pop .py{color:var(--salmon);font-size:1rem;margin-top:2px}
 .word-pop .mn{margin:14px 0 20px;line-height:1.8;font-size:1rem;background:var(--paper);border-radius:14px;padding:12px}
 
+/* 音色选择弹层 */
+.voice-pop{max-width:400px;width:100%;padding:22px}
+.voice-pop h3{font-family:var(--font-display);text-align:center;margin-bottom:4px;color:var(--ink)}
+.voice-pop .vp-sub{text-align:center;font-size:.8rem;color:#999;margin-bottom:14px}
+.voice-group{margin-bottom:12px}
+.voice-group .vg-t{font-family:var(--font-display);font-size:.95rem;margin-bottom:8px;color:var(--ink)}
+.voice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.voice-card{border:3px solid var(--ink);border-radius:16px;background:#fff;padding:10px 4px;text-align:center;cursor:pointer;transition:.15s;box-shadow:0 3px 0 var(--ink)}
+.voice-card:hover{transform:translateY(-2px)}
+.voice-card.on{background:var(--sunny)}
+.voice-card .vc-e{font-size:1.6rem}
+.voice-card .vc-n{font-size:.85rem;font-weight:700;margin-top:2px}
+.voice-card .vc-d{font-size:.68rem;color:#999}
+
 .toast{
   position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:#fff;padding:12px 26px;border-radius:999px;
@@ -466,7 +480,6 @@ button,[onclick]{touch-action:manipulation}
 
   <div class="section-title"><h3>🏅 我的徽章</h3><div class="line"></div></div>
   <div class="badge-shelf" id="badge-shelf"></div>
-  <p style="text-align:center;font-size:.75rem;opacity:.55;margin:20px 0 4px">本站内容由 AI 辅助生成（AIGC），仅供学习交流 · 详见家长中心「内容说明」</p>
 </section>
 
 <!-- ============ 关卡地图 ============ -->
@@ -489,6 +502,7 @@ button,[onclick]{touch-action:manipulation}
   <div class="topbar">
     <button class="iconbtn" onclick="quitReading()" title="返回地图">←</button>
     <button class="iconbtn" id="btn-speak" onclick="toggleSpeak()" title="朗读">🔊</button>
+    <button class="iconbtn" id="btn-voice" onclick="openVoicePanel()" title="选择音色">👧</button>
     <button class="iconbtn" id="btn-py" onclick="togglePinyin()" title="拼音开关">拼</button>
     <div class="tag c3" id="read-timer">⏱ 0 分钟</div>
     <div style="width:46px"></div>
@@ -604,11 +618,6 @@ button,[onclick]{touch-action:manipulation}
 
   <div class="section-title"><h3>📖 词语掌握（最近收集）</h3><div class="line"></div></div>
   <div class="sticker" style="padding:16px;margin-top:12px" id="p-vocab"></div>
-
-  <div class="section-title"><h3>ℹ️ 内容说明</h3><div class="line"></div></div>
-  <div class="sticker" style="padding:14px 18px;margin-top:12px;font-size:.82rem;opacity:.78;line-height:1.9">
-    本站 150 篇阅读材料、读后练习题与界面文案由 <b>AI 辅助生成（AIGC）</b>，生成后已经人工校对。故事类篇目为公有领域素材（成语、寓言、神话、民间故事、古诗）的原创改写；科普与人物篇目基于公开事实性知识原创撰写，不含第三方受版权保护作品的内容。拼音引擎 pinyin-pro 基于 MIT 协议使用。内容仅供学习交流，如发现任何版权问题请联系作者及时删除。
-  </div>
 </section>
 
 <!-- 词语弹窗 -->
@@ -618,6 +627,23 @@ button,[onclick]{touch-action:manipulation}
     <div class="py" id="wp-py"></div>
     <div class="mn" id="wp-mn"></div>
     <button class="btn salmon" id="wp-btn">收进宝盒 ✨</button>
+  </div>
+</div>
+
+<!-- 音色选择弹窗 -->
+<div class="modal-mask" id="voice-mask">
+  <div class="sticker voice-pop">
+    <h3>🎙️ 选择朗读音色</h3>
+    <div class="vp-sub">点一点卡片，马上试听新声音</div>
+    <div class="voice-group">
+      <div class="vg-t">👧 小女孩</div>
+      <div class="voice-grid" id="vg-f"></div>
+    </div>
+    <div class="voice-group">
+      <div class="vg-t">👦 小男孩</div>
+      <div class="voice-grid" id="vg-m"></div>
+    </div>
+    <button class="btn salmon" onclick="closeVoicePanel()" style="width:100%;margin-top:4px">选好了 ✨</button>
   </div>
 </div>
 
@@ -634,7 +660,12 @@ const TIERS=[
   {t:2,n:'二星书房',desc:'每篇约880字 · 理解原因与道理'},
   {t:3,n:'三星书房',desc:'每篇约920字 · 归纳主要内容'},
   {t:4,n:'四星书房',desc:'每篇约970字 · 推断与体会'},
-  {t:5,n:'五星书房',desc:'每篇约980字 · 评析与表达'}
+  {t:5,n:'五星书房',desc:'每篇约980字 · 评析与表达'},
+  {t:6,n:'六星书房',desc:'每篇约790字 · 概括与赏析'},
+  {t:7,n:'七星书房',desc:'每篇约830字 · 思辨与迁移'},
+  {t:8,n:'八星书房',desc:'每篇约590字 · 比较与整合'},
+  {t:9,n:'九星书房',desc:'每篇约590字 · 体会与鉴赏'},
+  {t:10,n:'十星书房',desc:'每篇约635字 · 综合与创作'}
 ];
 
 /* 阅读等级（按 XP 递进） */
@@ -692,6 +723,46 @@ const DAILY_GOAL=20, WORDS_GOAL=50000, HANZI_GOAL=500;
 <script src="data/books-36.js"></script>
 <script src="data/books-37.js"></script>
 <script src="data/books-38.js"></script>
+<script src="data/books-39.js"></script>
+<script src="data/books-40.js"></script>
+<script src="data/books-41.js"></script>
+<script src="data/books-42.js"></script>
+<script src="data/books-43.js"></script>
+<script src="data/books-44.js"></script>
+<script src="data/books-45.js"></script>
+<script src="data/books-46.js"></script>
+<script src="data/books-47.js"></script>
+<script src="data/books-48.js"></script>
+<script src="data/books-49.js"></script>
+<script src="data/books-50.js"></script>
+<script src="data/books-51.js"></script>
+<script src="data/books-52.js"></script>
+<script src="data/books-53.js"></script>
+<script src="data/books-54.js"></script>
+<script src="data/books-55.js"></script>
+<script src="data/books-56.js"></script>
+<script src="data/books-57.js"></script>
+<script src="data/books-58.js"></script>
+<script src="data/books-59.js"></script>
+<script src="data/books-60.js"></script>
+<script src="data/books-61.js"></script>
+<script src="data/books-62.js"></script>
+<script src="data/books-63.js"></script>
+<script src="data/books-64.js"></script>
+<script src="data/books-65.js"></script>
+<script src="data/books-66.js"></script>
+<script src="data/books-67.js"></script>
+<script src="data/books-68.js"></script>
+<script src="data/books-69.js"></script>
+<script src="data/books-70.js"></script>
+<script src="data/books-71.js"></script>
+<script src="data/books-72.js"></script>
+<script src="data/books-73.js"></script>
+<script src="data/books-74.js"></script>
+<script src="data/books-75.js"></script>
+<script src="data/books-76.js"></script>
+<script src="data/books-77.js"></script>
+<script src="data/books-78.js"></script>
 <script src="lib/pinyin-pro.js"></script>
 <script>
 /* ================================================================
@@ -704,9 +775,9 @@ let tickHandle=null;     // 阅读计时器
 let CH=null;             // 当前挑战状态
 
 function loadSave(){
-  try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&s.days)return s;}catch(e){}
+  try{const s=JSON.parse(localStorage.getItem(SAVE_KEY));if(s&&s.days){if(!s.voice)s.voice='g1';return s;}}catch(e){}
   return {xp:0,charsRead:0,vocab:{},days:{},streak:0,lastDay:'',badges:[],
-          levels:{},quizRight:0,quizTotal:0};
+          levels:{},quizRight:0,quizTotal:0,voice:'g1'};
 }
 function save(){localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE));}
 function todayStr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -788,7 +859,7 @@ function renderHome(){
 }
 
 /* ---------- 书房（通关线路图 + 书目列表） ---------- */
-const TIER_EMOJI={1:'🌱',2:'🌿',3:'🌳',4:'⛰️',5:'👑'};
+const TIER_EMOJI={1:'🌱',2:'🌿',3:'🌳',4:'⛰️',5:'👑',6:'🏆',7:'🚀',8:'🌟',9:'💎',10:'🎓'};
 function doneInTier(t){return BOOKS.filter(b=>b.tier===t&&(SAVE.levels[b.id]||{}).stars>0).length;}
 function renderMap(){
   document.getElementById('map-level').textContent=levelInfo(SAVE.xp).cur.n;
@@ -872,7 +943,7 @@ function markWords(text){
 
 /* ---------- 拼音开关 ---------- */
 const ZH_RE=/[\u3400-\u4dbf\u4e00-\u9fff]/;
-/* 多音字修正表：基于全部 150 篇书库逐一审计。pinyin-pro 词库对部分词注音不准，
+/* 多音字修正表：基于全部 210 篇书库逐一审计。pinyin-pro 词库对部分词注音不准，
    这里用词级修正（长词优先，命中后该位置受保护），再对残余的“地/得”按结构助词兜底为轻声。 */
 const PY_FIX={
 /* 得 dé / děi / de 相关（长键优先） */
@@ -922,7 +993,53 @@ const PY_FIX={
 '长出':'zhǎng chū','长个':'zhǎng gè','跟着长':'gēn zhe zhǎng','才长':'cái zhǎng',
 '传来':'chuán lái','传入':'chuán rù','教给':'jiāo gěi','教我':'jiāo wǒ','教你':'jiāo nǐ',
 '教他':'jiāo tā','教大家':'jiāo dà jiā','载人':'zài rén','载着':'zài zhe',
-'曲项':'qū xiàng','请帖':'qǐng tiě','斗篷':'dǒu peng','大城':'dà chéng'
+'曲项':'qū xiàng','请帖':'qǐng tiě','斗篷':'dǒu peng','大城':'dà chéng',
+/* 210 篇扩库审计新增（六星、七星书房；个别键同时修正旧文） */
+'哽咽':'gěng yè','踏实':'tā shi','教会':'jiāo huì','有舍才有得':'yǒu shě cái yǒu dé',
+'宁失':'nìng shī','卡住':'qiǎ zhù','擦就着':'cā jiù zháo','肝脏':'gān zàng',
+'结实':'jiē shi','数秒':'shǔ miǎo','数了':'shǔ le','洼地':'wā dì',
+'脚踏实地':'jiǎo tà shí dì','看铺子':'kān pù zi','看店':'kān diàn',
+'落下了终':'lào xià le zhōng','涨得通红':'zhàng de tōng hóng','取得':'qǔ dé',
+'中了':'zhòng le','相中':'xiàng zhòng','还给土':'huán gěi tǔ',
+'还给他':'huán gěi tā','还给了养':'huán gěi le yǎng','归还给':'guī huán gěi',
+/* 300 篇扩库审计新增（八星、九星、十星书房） */
+'处以':'chǔ yǐ','多少':'duō shǎo','反应':'fǎn yìng','当作家':'dāng zuò jiā',
+'教它们':'jiāo tā men','教儿子':'jiāo ér zi','教乌云':'jiāo wū yún',
+'教人工智能':'jiāo rén gōng zhì néng','教过的口诀':'jiāo guò de kǒu jué',
+'含着':'hán zhe','看着':'kàn zhe','抱着':'bào zhe','空着手':'kōng zhe shǒu',
+'笑着':'xiào zhe','打着':'dǎ zhe','斜着':'xié zhe',
+'点着地':'diǎn zhe dì','点着灯':'diǎn zhe dēng',
+'钻了进来':'zuān le jìn lái','深处钻':'shēn chù zuān',
+'铺纸':'pū zhǐ','铺上':'pū shàng','铺在':'pū zài','铺网':'pū wǎng','铺了一床':'pū le yī chuáng',
+'有多重':'yǒu duō zhòng','重量':'zhòng liàng','识字量':'shí zì liàng',
+'载上千人':'zài shàng qiān rén','一首都完':'yī shǒu dōu wán','皇帝都派':'huáng dì dōu pài',
+'夫差':'fū chāi',
+'馆长':'guǎn zhǎng','船长':'chuán zhǎng','当所长':'dāng suǒ zhǎng',
+'长力气':'zhǎng lì qi','庄稼在长':'zhuāng jia zài zhǎng','小树在长':'xiǎo shù zài zhǎng',
+'你也在长':'nǐ yě zài zhǎng','长着':'zhǎng zhe','长满':'zhǎng mǎn','疯长':'fēng zhǎng',
+'不长翅膀':'bù zhǎng chì bǎng','自己长的':'zì jǐ zhǎng de','长这么高':'zhǎng zhè me gāo',
+'长什么样':'zhǎng shén me yàng','要长十几年':'yào zhǎng shí jǐ nián','“长”出来':'zhǎng chū lái',
+/* 只：量词读 zhī（一只/这只），副词读 zhǐ；先保护两处量词歧义，再列副词键 */
+'一只是':'yì zhī shì','一只看':'yì zhī kàn',
+'只是':'zhǐ shì','只有':'zhǐ yǒu','只要':'zhǐ yào','只好':'zhǐ hǎo','只能':'zhǐ néng',
+'只得':'zhǐ dé','只怕':'zhǐ pà','只管':'zhǐ guǎn','只顾':'zhǐ gù','只想':'zhǐ xiǎng',
+'只看':'zhǐ kàn','只听':'zhǐ tīng','只说':'zhǐ shuō','只写':'zhǐ xiě','只读':'zhǐ dú',
+'只做':'zhǐ zuò','只吃':'zhǐ chī','只用':'zhǐ yòng','只玩':'zhǐ wán','只选':'zhǐ xuǎn',
+'只拍':'zhǐ pāi','只跑':'zhǐ pǎo','只站':'zhǐ zhàn','只开':'zhǐ kāi','只关':'zhǐ guān',
+'只信':'zhǐ xìn','只为':'zhǐ wèi','只给':'zhǐ gěi','只照':'zhǐ zhào','只靠':'zhǐ kào',
+'只求':'zhǐ qiú','只剩':'zhǐ shèng','只觉':'zhǐ jué','只应':'zhǐ yīng','只挑':'zhǐ tiāo',
+'只带':'zhǐ dài','只留':'zhǐ liú','只愿':'zhǐ yuàn','只怪':'zhǐ guài','只恨':'zhǐ hèn',
+'只盼':'zhǐ pàn','只爱':'zhǐ ài','只装':'zhǐ zhuāng','只藏':'zhǐ cáng','只学':'zhǐ xué',
+'只唱':'zhǐ chàng','只问':'zhǐ wèn','只答':'zhǐ dá','只肯':'zhǐ kěn','只敢':'zhǐ gǎn',
+'只知':'zhǐ zhī','只属':'zhǐ shǔ','只生':'zhǐ shēng','只打':'zhǐ dǎ','只会':'zhǐ huì',
+'只收':'zhǐ shōu','只凭':'zhǐ píng','只在':'zhǐ zài','只飞起':'zhǐ fēi qǐ',
+'只冒':'zhǐ mào','只发':'zhǐ fā','只拿':'zhǐ ná','只保':'zhǐ bǎo','只送':'zhǐ sòng',
+'只借':'zhǐ jiè','只需':'zhǐ xū','只偏':'zhǐ piān','只占':'zhǐ zhàn','只差':'zhǐ chà',
+'只进':'zhǐ jìn','只露':'zhǐ lù','只抓':'zhǐ zhuā','只等':'zhǐ děng','只持续':'zhǐ chí xù',
+'只流':'zhǐ liú','只上':'zhǐ shàng','茶只倒':'chá zhǐ dào','只让':'zhǐ ràng','只反':'zhǐ fǎn',
+'只背':'zhǐ bèi','只对':'zhǐ duì','只挤':'zhǐ jǐ','只享':'zhǐ xiǎng','只批':'zhǐ pī',
+'只因':'zhǐ yīn','只点':'zhǐ diǎn','只不过':'zhǐ bù guò','不只':'bù zhǐ','只认':'zhǐ rèn',
+'只盯':'zhǐ dīng','年只长':'nián zhǐ zhǎng','“只长':'zhǐ zhǎng'
 };
 const PY_KEYS=Object.keys(PY_FIX).sort((a,b)=>b.length-a.length);
 function fixPinyin(t,arr){
@@ -988,25 +1105,79 @@ function togglePinyin(){
   toast(SAVE.py?'🔤 拼音已开启':'拼音已关闭');
 }
 
-/* ---------- 小女孩朗读（Web Speech） ---------- */
+/* ---------- 朗读（Web Speech，可选音色） ---------- */
 let speakGen=0,utterId=0,speaking=false,voicesCache=[];
 function refreshVoices(){try{voicesCache=speechSynthesis.getVoices();}catch(e){voicesCache=[];}}
 if('speechSynthesis' in window){
   refreshVoices();
   speechSynthesis.onvoiceschanged=refreshVoices;
 }
+/* 预置音色：小女孩 3 种 + 小男孩 3 种。
+   sex 决定优先挑选的系统嗓音性别，pitch/rate 负责把嗓音“化妆”成不同年龄与性格。 */
+const VOICE_PRESETS=[
+  {id:'g1',sex:'f',emoji:'👧',name:'甜甜',desc:'清脆甜美',pitch:1.5,rate:0.9},
+  {id:'g2',sex:'f',emoji:'🌟',name:'丫丫',desc:'活泼跳跃',pitch:1.7,rate:1.02},
+  {id:'g3',sex:'f',emoji:'🌙',name:'柔柔',desc:'温柔缓慢',pitch:1.3,rate:0.8},
+  {id:'b1',sex:'m',emoji:'👦',name:'皮皮',desc:'阳光响亮',pitch:1.45,rate:0.95},
+  {id:'b2',sex:'m',emoji:'⚡',name:'跳跳',desc:'俏皮轻快',pitch:1.65,rate:1.05},
+  {id:'b3',sex:'m',emoji:'🐻',name:'稳稳',desc:'沉稳慢读',pitch:1.2,rate:0.82}
+];
+const VOICE_FEMALE=['xiaoyou','yunxia','xiaoyi','xiaoxuan','xiaoxiao','xiaobei','tingting','ting-ting',
+  'meijia','mei-jia','yaoyao','huihui','hui-hui','xiaohan','google','female'];
+const VOICE_MALE=['yunyang','yunxi','yunjian','yunye','yunhao','kangkang','xiaokang','yunzhe','male'];
+function voicePreset(){return VOICE_PRESETS.find(v=>v.id===SAVE.voice)||VOICE_PRESETS[0];}
 function pickVoice(){
-  // 优先挑选年轻 / 女童音色，退回任意中文语音
+  // 按所选音色的性别优先挑嗓音；没有合适性别时退回任意中文语音（音调仍按预置调整）
   if(!voicesCache.length)refreshVoices();
   const zh=voicesCache.filter(v=>((v.lang||'').toLowerCase().replace('_','-')).indexOf('zh')===0);
   if(!zh.length)return null;
-  const prefer=['xiaoyou','yunxia','xiaoyi','xiaoxiao','xiaoxuan','xiaobei','tingting','ting-ting',
-    'meijia','mei-jia','yaoyao','huihui','hui-hui','google','female'];
-  for(const p of prefer){
+  const vp=voicePreset();
+  const mine=vp.sex==='m'?VOICE_MALE:VOICE_FEMALE;
+  const other=vp.sex==='m'?VOICE_FEMALE:VOICE_MALE;
+  for(const p of mine){
     const v=zh.find(v=>(v.name||'').toLowerCase().includes(p));
     if(v)return v;
   }
+  for(const v of zh){ // 找一个不属于异性常用名的中文嗓音
+    const n=(v.name||'').toLowerCase();
+    if(!other.some(p=>n.includes(p)))return v;
+  }
   return zh[0];
+}
+function updateVoiceBtn(){
+  const b=document.getElementById('btn-voice');if(!b)return;
+  b.textContent=voicePreset().sex==='f'?'👧':'👦';
+  b.title='选择音色（当前：'+voicePreset().name+'）';
+}
+function openVoicePanel(){
+  ['f','m'].forEach(sex=>{
+    document.getElementById('vg-'+sex).innerHTML=VOICE_PRESETS.filter(v=>v.sex===sex).map(v=>
+      `<div class="voice-card ${SAVE.voice===v.id?'on':''}" onclick="chooseVoice('${v.id}')">
+        <div class="vc-e">${v.emoji}</div>
+        <div class="vc-n">${v.name}</div>
+        <div class="vc-d">${v.desc}</div>
+      </div>`).join('');
+  });
+  document.getElementById('voice-mask').classList.add('show');
+}
+function closeVoicePanel(){document.getElementById('voice-mask').classList.remove('show');}
+function chooseVoice(id){
+  SAVE.voice=id;save();updateVoiceBtn();openVoicePanel();
+  if(speaking){ // 正在朗读：立刻用新音色从当前页重新读
+    speakGen++;speakCurrent(speakGen);
+  }else{
+    previewVoice();
+  }
+  toast('🎙️ 换成 '+voicePreset().name+' 的声音啦');
+}
+function previewVoice(){
+  if(!('speechSynthesis' in window)){toast('当前浏览器不支持朗读功能');return;}
+  try{speechSynthesis.cancel();}catch(e){}
+  const vp=voicePreset();
+  const u=new SpeechSynthesisUtterance('你好呀，我是'+vp.name+'，让我来给你读故事吧！');
+  const v=pickVoice();if(v)u.voice=v;
+  u.lang='zh-CN';u.rate=vp.rate;u.pitch=vp.pitch;u.volume=1;
+  speechSynthesis.speak(u);
 }
 function updateSpeakBtn(){
   const b=document.getElementById('btn-speak');if(!b)return;
@@ -1019,7 +1190,7 @@ function startSpeak(){
   if(!('speechSynthesis' in window)){toast('当前浏览器不支持朗读功能');return;}
   speaking=true;speakGen++;updateSpeakBtn();
   speakCurrent(speakGen);
-  toast('🔊 小姐姐开始朗读啦');
+  toast('🔊 '+voicePreset().name+'开始朗读啦');
 }
 function stopSpeak(){
   speaking=false;speakGen++;
@@ -1035,7 +1206,17 @@ const TTS_FIX={
 '粘住':'沾住','粘得':'沾得','粘锅':'沾锅','半宿':'半朽','燕王':'淹王','请帖':'请铁',
 '曲项':'驱项','屏住':'饼住','涨红':'胀红','载着':'在着','载人':'在人',
 '待在':'呆在','待上':'呆上','待不住':'呆不住','教给':'交给','教我':'交我','教你':'交你',
-'教他':'交他','教大家':'交大家'
+'教他':'交他','教大家':'交大家',
+/* 210 篇扩库新增谐音修正 */
+'数秒':'鼠秒','数了':'鼠了','哽咽':'梗夜','踏实':'塌实','教会':'交会',
+'肝脏':'干葬','结实':'接实','看铺子':'勘铺子','看店':'勘店',
+'落下了终':'烙下了终','涨得通红':'胀得通红','中了':'重了','相中':'像重',
+'还给土':'环给土','还给他':'环给他','还给了养':'环给了养','归还给':'归环给',
+/* 300 篇扩库新增谐音修正 */
+'夫差':'夫拆','处以':'楚以',
+'教它们':'交它们','教儿子':'交儿子','教乌云':'交乌云',
+'教人工智能':'交人工智能','教过的口诀':'交过的口诀',
+'铺纸':'扑纸','铺上':'扑上','铺在':'扑在','铺网':'扑网','铺了一床':'扑了一床'
 };
 const TTS_KEYS=Object.keys(TTS_FIX).sort((a,b)=>b.length-a.length);
 function ttsText(s){
@@ -1051,7 +1232,8 @@ function speakCurrent(gen){
   try{speechSynthesis.cancel();}catch(e){}
   const u=new SpeechSynthesisUtterance(text);
   const v=pickVoice();if(v)u.voice=v;
-  u.lang='zh-CN';u.rate=0.85;u.pitch=1.45;u.volume=1; // 提高音调，模拟小女孩的嗓音
+  const vp=voicePreset();
+  u.lang='zh-CN';u.rate=vp.rate;u.pitch=vp.pitch;u.volume=1; // 按所选音色调整音调与语速
   const uid=++utterId;
   u.onend=()=>{
     if(!speaking||gen!==speakGen||uid!==utterId)return;
@@ -1493,6 +1675,7 @@ function resetAll(){
   }
 }
 /* ---------- 启动 ---------- */
+updateVoiceBtn();
 renderHome();
 </script>
 </body>
